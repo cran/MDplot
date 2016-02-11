@@ -1,0 +1,71 @@
+import( methods )
+import( MASS )
+import( RColorBrewer )
+import( gtools )
+import( gplots )
+importFrom( "graphics", "abline", "axis", "barplot", "contour", "image", "layout",
+            "legend", "lines", "mtext", "par", "persp", "plot", "plot.new",
+            "rasterImage", "segments", "text" )
+importFrom( "stats", "sd" )
+importFrom( "utils", "read.table", "write.table" )
+importFrom( "grDevices", "as.raster", "colorRampPalette", "trans3d" )
+
+# export plotting functions
+export( 
+         dssp_summary,
+         dssp_ts,
+         rmsd,
+         rmsf,
+         clusters,
+         TIcurve,
+         hbond,
+         ramachandran,
+         xrmsd,
+         hbond_ts,
+         clusters_ts
+         #dssp_summary_multi,
+         #rmsd_average
+       )
+
+# export loading functions
+export(
+         load_hbond,
+         load_ramachandran,
+         load_clusters,
+         load_TIcurve,
+         load_dssp_summary,
+         load_dssp_ts,
+         load_rmsf,
+         load_rmsd,
+         load_xrmsd,
+         load_hbond_ts,
+         load_clusters_ts
+      )
+
+# export data manipulation functions
+#export(
+#         averaging_dssp_summary
+#      )
+
+# export other functions
+export(
+         parse_arguments,
+         testRequired,
+         getValue,
+         getFiles,
+         testAllowed,
+         getListOfKeys,
+         isKeySet,
+         integrate_curve,
+         split_equidistant,
+         translate_aminoacids,
+         plot_segments,
+         get_sign_digits,
+         fill_bins,
+         print_help
+      )
+
+# export classes
+exportClasses(
+               MDplot_argument
+             )
