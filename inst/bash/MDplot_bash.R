@@ -248,12 +248,6 @@ if( STRING_function == "xrmsd" )
                  main = ifelse( isKeySet( LIST_arguments, "title" ),
                                 getValue( LIST_arguments, "title" ),
                                 NA ),
-                 xlab = ifelse( all( is.na( VEC_axisNames ) ),
-                                "time [structure]",
-                                VEC_axisNames[ 1 ] ),
-                 ylab = ifelse( all( is.na( VEC_axisNames ) ),
-                                "time [structure]",
-                                VEC_axisNames[ 2 ] ),
                  xaxisRange = VEC_xaxisRange,
                  yaxisRange = VEC_yaxisRange )
 }
@@ -316,7 +310,7 @@ if( STRING_function == "rmsf" )
 if( STRING_function == "rmsd" )
 {
   # check, if input is sane for this plot and get input files
-  VEC_rmsdAll <- c( "factor", "timeUnit", "rmsdUnit" )
+  VEC_rmsdAll <- c( "snapshotsPerTimeInt", "timeUnit", "rmsdUnit" )
   testRequired( VEC_requiredForAll, LIST_arguments )
   testAllowed( c( VEC_rmsdAll,
                   VEC_allowedForAll ), LIST_arguments )
@@ -344,9 +338,9 @@ if( STRING_function == "rmsd" )
   # plot
   MDplot::rmsd( MDplot::load_rmsd( VEC_files ),
                 names = VEC_dataNames,
-                factor = ifelse( isKeySet( LIST_arguments, "factor" ),
-                                 as.numeric( getValue( LIST_arguments, "factor" ) ),
-                                 1000 ),
+                snapshotsPerTimeInt = ifelse( isKeySet( LIST_arguments, "snapshotsPerTimeInt" ),
+                                              as.numeric( getValue( LIST_arguments, "snapshotsPerTimeInt" ) ),
+                                              1000 ),
                 timeUnit = ifelse( isKeySet( LIST_arguments, "timeUnit" ),
                                    getValue( LIST_arguments, "timeUnit" ),
                                    "ns" ),
@@ -381,7 +375,6 @@ if( STRING_function == "ramachandran" )
   # check, if input is sane for this plot and get input files
   VEC_ramaAll <- c( "bins",
                     "angleColumns",
-                    "heatColumn",
                     "plotType",
                     "heatFun",
                     "heatUnits",
@@ -395,7 +388,6 @@ if( STRING_function == "ramachandran" )
                 VEC_ramaAll,
                 c( "<number of bins to divide data in (x, y)> (optional)",
                    "<columns in file containing dihedrals>",
-                   "<column in file containing heat> (optional)",
                    "['sparse'/'comic'/'fancy'] (optional)",
                    "<function to treat heat with, default 'log'> (optional)",
                    "<units, in which heat is given> (optional)",
@@ -440,10 +432,7 @@ if( STRING_function == "ramachandran" )
                                                    angleColumns = VEC_angleColumns,
                                                    shiftAngles = ifelse( isKeySet( LIST_arguments, "shiftAngles" ),
                                                                          as.numeric( getValue( LIST_arguments, "shiftAngles" ) ),
-                                                                         NA ),
-                                                   heatColumn = ifelse( isKeySet( LIST_arguments, "heatColumn" ),
-                                                                        as.numeric( getValue( LIST_arguments, "heatColumn" ) ),
-                                                                       NA ) ),
+                                                                         NA ) ),
                         xBins = VEC_bins[ 1 ],
                         yBins = VEC_bins[ 2 ],
                         plotType = STRING_plotType,
@@ -499,6 +488,52 @@ if( STRING_function == "TIcurve" )
                    main = ifelse( isKeySet( LIST_arguments, "title" ),
                                   getValue( LIST_arguments, "title" ),
                                   NA ) )
+}
+
+if( STRING_function == "timeseries" )
+{
+  # check, if input is sane for this plot and get input files
+  VEC_rmsdAll <- c( "snapshotsPerTimeInt", "timeUnit", "valueUnit", "valueName" )
+  testRequired( VEC_requiredForAll, LIST_arguments )
+  testAllowed( c( VEC_rmsdAll,
+                  VEC_allowedForAll ), LIST_arguments )
+  if( isKeySet( LIST_arguments, "help" )
+      && getValue( LIST_arguments, "help" ) == "TRUE" )
+  {
+    print_help( STRING_function,
+                c( VEC_rmsdAll,
+                   VEC_allowedForAll ),
+                c( "<factor by which the values should be divided> (default: 1000)",
+                   "<abbreviation of unit used for time-axis> (default: ns)",
+                   "<abbreviation of unit used for response variable> (optional)",
+                   "<name of response variable> (optional)",
+                   VEC_allowedForAllDesc ) )
+    quit( save = "no", status = 0, runLast = TRUE )
+  }
+  
+  VEC_files <- getFiles( getValue( LIST_arguments, "files" ) )
+  for( i in 1:length( VEC_files ) )
+  {
+    if( !file.exists( VEC_files[ i ] ) )
+      stop( paste( "Error in file checking: seemingly, file",
+                   VEC_files[ i ], "does not exist." ) )
+  }    
+  
+  # plot
+  MDplot::timeseries( MDplot::load_timeseries( VEC_files ),
+                      names = VEC_dataNames,
+                      snapshotsPerTimeInt = ifelse( isKeySet( LIST_arguments, "snapshotsPerTimeInt" ),
+                                                    as.numeric( getValue( LIST_arguments, "snapshotsPerTimeInt" ) ),
+                                                    1000 ),
+                      timeUnit = ifelse( isKeySet( LIST_arguments, "timeUnit" ),
+                                         getValue( LIST_arguments, "timeUnit" ),
+                                         "ns" ),
+                      valueUnit = ifelse( isKeySet( LIST_arguments, "valueUnit" ),
+                                          getValue( LIST_arguments, "valueUnit" ),
+                                          NA ),
+                      main = ifelse( isKeySet( LIST_arguments, "title" ),
+                                     getValue( LIST_arguments, "title" ),
+                                     NA ) )
 }
 
 
@@ -755,7 +790,7 @@ if( STRING_function == "hbond_ts" )
                                                   as.numeric( getValue( LIST_arguments,
                                                                         "snapshotsPerTimeInt" ) ),
                                                   1000 ),
-                    hbondIndices = VEC_hbondIndices,
+                    hbondIndices = list( VEC_hbondIndices ),
                     main = ifelse( isKeySet( LIST_arguments, "title" ),
                                    getValue( LIST_arguments, "title" ),
                                    NA ) )

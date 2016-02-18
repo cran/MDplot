@@ -21,8 +21,8 @@ hbond_ts( timeseries,
           ... )
 }
 \arguments{
-\item{timeseries}{Table, containing the timeseries information (e.g. produced by MDplot::load_hbond_ts()).}
-\item{summary}{Table, containing the summary information (e.g. produced by MDplot::load_hbond()).}
+\item{timeseries}{Table, containing the timeseries information (e.g. produced by \code{\link{load_hbond_ts}()}).}
+\item{summary}{Table, containing the summary information (e.g. produced by \code{\link{load_hbond}()}).}
 \item{acceptorRange}{Vector of acceptor resdiues, which are to be plotted.}
 \item{donorRange}{Vector of donor residues, which are to be plotted.}
 \item{plotOccurences}{Specifies, whether the overall summary should also be plotted in a subplot on the right hand side.}
@@ -33,7 +33,7 @@ hbond_ts( timeseries,
 \item{timeUnit}{Specifies the time unit on the x-axis.}
 \item{snapshotsPerTimeInt}{Specifies, how many snapshots make up one time unit (see above).}
 \item{timeRange}{Selects a certain time range specified by a vector.}
-\item{hbondIndices}{Select hbonds by their identifiers.}
+\item{hbondIndices}{List, containing vectors to select hbonds by their identifiers.}
 \item{barePlot}{Boolean, indicating whether the plot is to be made without any additional information.}
 \item{...}{Additional arguments (ellipsis).}
 }

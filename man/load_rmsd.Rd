@@ -1,9 +1,9 @@
 %  Copyright (C) 2015 Christian Margreitter
 \name{load_rmsd}
 \alias{load_rmsd}
-\title{Loading function for MDplot::rmsd()}
+\title{Loading function for \code{\link{rmsd}()}}
 \description{
-Returns a list of vector pairs of datapoint indices and values.}
+Returns a list of vector pairs of datapoint indices and RMSD values.}
 \usage{
 load_rmsd( files,
            mdEngine = "GROMOS" )

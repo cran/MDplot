@@ -1,6 +1,6 @@
 # plot multiple DSSP plots
 dssp_summary_multi <- function( dsspSumMultInput,
-                                selectedMotifs,
+                                selectedElements,
                                 printLegend = FALSE,
                                 colours = NA,
                                 showResidues = NA,
@@ -20,7 +20,7 @@ dssp_summary_multi <- function( dsspSumMultInput,
   }
   #########
   MDplot::dssp_summary( dsspSumMultInput[[ 1 ]][[ "matrix" ]],
-                        selectedMotifs = c( selectedMotifs ),
+                        selectedElements = c( selectedElements ),
                         barePlot = barePlot,
                         plotType = "curves",
                         colours = c( colours[ 1 ] ),
@@ -30,7 +30,7 @@ dssp_summary_multi <- function( dsspSumMultInput,
   {
     par( new = TRUE )
     MDplot::dssp_summary( dsspSumMultInput[[ i ]][[ "matrix" ]],
-                          selectedMotifs = c( selectedMotifs ),
+                          selectedElements = c( selectedElements ),
                           barePlot = TRUE,
                           plotType = "curves",
                           colours = c( colours[ i ] ),
@@ -81,12 +81,12 @@ load_dssp_summary <- function( path,
 dssp_summary <- function( dsspData,
                           printLegend = FALSE,
                           useOwnLegend = FALSE,
-                          motifNames = NA,
+                          elementNames = NA,
                           colours = NA,
                           showValues = NA,
                           showResidues = NA,
                           plotType = "dots",
-                          selectedMotifs = NA,
+                          selectedElements = NA,
                           barePlot = FALSE,
                           ... )
 {
@@ -108,22 +108,22 @@ dssp_summary <- function( dsspData,
                  plotType,
                  " is not known!",
                  sep = "" ) )
-  if( all( is.na( selectedMotifs ) ) )
-    selectedMotifs <- colnames( MAT_data )
+  if( all( is.na( selectedElements ) ) )
+    selectedElements <- colnames( MAT_data )
   MAT_data <- MAT_data[ ,
-                        ifelse( colnames( MAT_data ) %in% selectedMotifs,
+                        ifelse( colnames( MAT_data ) %in% selectedElements,
                                 TRUE,
                                 FALSE ),
                         drop = FALSE ]
   if( useOwnLegend )
-    if( all( is.na( motifNames ) ) ||
-        length( motifNames ) != ncol( MAT_data ) )
+    if( all( is.na( elementNames ) ) ||
+        length( elementNames ) != ncol( MAT_data ) )
       stop( "Error while trying to name the columns in the input matrix ",
-            "according to specification, since either no 'motifNames' has been ",
+            "according to specification, since either no 'elementNames' has been ",
             "supplied or it has the wrong length!",
             sep = "" )
     else
-      colnames( MAT_data ) <- motifNames
+      colnames( MAT_data ) <- elementNames
   #########
   
   # if certain range of residues is to be shown, remove the rest
@@ -281,11 +281,14 @@ dssp_summary <- function( dsspData,
 
 # load the time-series files
 load_dssp_ts <- function( folder,
+                          filenames = NA,
                           mdEngine = "GROMOS" )
 {
-  VEC_gromos_names <- c( "3-Helix", "4-Helix", "5-Helix",
-                         "Bend", "Beta-Bridge", "Beta-Strand",
-                         "Turn" )
+  VEC_gromos_names <- filenames
+  if( is.na( filenames ) )
+    VEC_gromos_names <- c( "3-Helix", "4-Helix", "5-Helix",
+                           "Bend", "Beta-Bridge", "Beta-Strand",
+                           "Turn" )
   STRING_gromos_postfix <- ".out"
   LIST_return <- list()
   for( i in 1:length( VEC_gromos_names ) )
