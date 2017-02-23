@@ -1,3 +1,139 @@
+# split AMBER atom names into parts
+split_AMBER_atomnames <- function( STRING_input )
+{
+  VEC_first <- unlist( strsplit( STRING_input,
+                                 split = "@" ) )
+  VEC_second <- unlist( strsplit( VEC_first[ 1 ],
+                                  split = "_" ) )
+  return( list( resName = VEC_second[ 1 ],
+                resNumber = as.numeric( VEC_second[ 2 ] ),
+                atomName = VEC_first[ 2 ] ) )
+}
+
+# split GROMACS atom names into parts
+split_GROMACS_atomnames <- function( STRING_input )
+{
+  STRING_residueName <- NA
+  STRING_residueNumber <- NA
+  STRING_atomName <- NA
+  for( i in 1:nchar( STRING_input ) )
+  {
+    if( suppressWarnings( is.na( as.numeric( substr( STRING_input,
+                                                     i,
+                                                     i ) ) ) ) )
+      next
+    STRING_residueName <- substr( STRING_input,
+                                  1,
+                                  i - 1 )
+    for( j in i:nchar( STRING_input ) )
+    {
+      if( suppressWarnings( !is.na( as.numeric( substr( STRING_input,
+                                                        j,
+                                                        j ) ) ) ) )
+        next
+      STRING_residueNumber <- substr( STRING_input,
+                                      i,
+                                      j - 1 )
+      STRING_atomName <- substr( STRING_input,
+                                 j,
+                                 nchar( STRING_input ) )
+      return( list( residueName = STRING_residueName,
+                    residueNumber = STRING_residueNumber,
+                    atomName = STRING_atomName ) )
+    }
+  }
+}
+
+# find nth occurence
+find_Nth_occurrence <- function( target,
+                                 phrase,
+                                 startFrom = 1,
+                                 numberMatch = 1)
+{
+  parts = unlist( strsplit( substring( target, startFrom ), phrase ) )
+  if( length( parts ) < ( numberMatch + 1 ) )
+    return( -1 )
+  return( sum( nchar( parts[ 1:numberMatch ] ) ) + startFrom + ( numberMatch - 1 ) * nchar( phrase ) )
+}
+
+# load XPM file and convert it into a matrix
+# WARNING: colors are not reported
+load_XPM <- function( path )
+{
+  inputData <- readLines( path )
+  if( inputData[ 1 ] != "/* XPM */" )
+    stop( "Magic number in file does not match XPM definition!" )
+  inputData <- inputData[ -1 ]
+  MAT_result <- NULL
+  INT_numberColumns <- NA
+  INT_numberRows <- NA
+  VEC_colors <- c()
+  VEC_chars <- c()
+  VEC_colorComments <- c()
+  for( i in 1:length( inputData ) )
+  {
+    if( regexpr( "static char", inputData[ i ] ) != -1 )
+    {
+      STRING_header <- inputData[ i + 1 ]
+      VEC_header <- as.numeric( unlist( strsplit( substr( STRING_header, 2, nchar( STRING_header ) - 2 ), "[[:space:]]+" ) ) )
+      INT_numberColumns <- VEC_header[ 1 ]
+      INT_numberRows <- VEC_header[ 2 ]
+      INT_start <- i + 2
+      for( j in INT_start:( INT_start + VEC_header[ 3 ] - 1 ) )
+      {
+        STRING_colBuffer <- substr( inputData[ j ],
+                                    find_Nth_occurrence( inputData[ j ], '"' ) + 1,
+                                    find_Nth_occurrence( inputData[ j ], '"', numberMatch = 2 ) - 1 )
+        VEC_chars <- c( VEC_chars,
+                        substr( STRING_colBuffer, 1, 1 ) )
+        INT_commentStart <- find_Nth_occurrence( inputData[ j ], "/" )
+        if( INT_commentStart != -1 )
+        {
+          STRING_commentBuffer <- substr( inputData[ j ],
+                                          INT_commentStart + 1,
+                                          find_Nth_occurrence( inputData[ j ], "/", numberMatch = 2 ) - 1 )
+          VEC_colorComments <- c( VEC_colorComments,
+                                  as.numeric( 
+                                  substr( STRING_commentBuffer,
+                                          find_Nth_occurrence( STRING_commentBuffer, '"' ) + 1,
+                                          find_Nth_occurrence( STRING_commentBuffer, '"', numberMatch = 2 ) - 1 ) ) )
+        }
+      }
+      INT_start <- i + 1 + VEC_header[ 3 ] + 1
+      INT_addition <- 0
+      for( j in INT_start:length( inputData ) )
+      {
+        if( substr( inputData[ j ], 1, 3 ) == "/* " )
+        {
+          INT_addition <- INT_addition + 1
+          next
+        }
+        else
+          break
+      }
+      INT_start = INT_start + INT_addition
+      for( j in INT_start:( INT_start + VEC_header[ 2 ] - 1 ) )
+      {
+        STRING_buffer <- inputData[ j ]
+        STRING_buffer <- substr( inputData[ j ], 2, VEC_header[ 1 ] + 1 )
+        if( all( is.null( MAT_result ) ) )
+          MAT_result <- matrix( unlist( strsplit( STRING_buffer, split = "" ) ),
+                                nrow = 1 )
+        else
+          MAT_result <- rbind( MAT_result,
+                               unlist( strsplit( STRING_buffer, split = "" ) ) )
+      }
+      break
+    }
+  }
+  return( list( numberColumns = INT_numberColumns,
+                numberRows = INT_numberRows,
+                usedColors = VEC_colors,
+                colorComments = VEC_colorComments,
+                usedChars = VEC_chars,
+                data = MAT_result ) )
+}
+
 # round properly
 setNumberDigits <- function( VEC_values, digits )
 {
@@ -317,5 +453,5 @@ print_help <- function( STRING_functionName,
                        sep = "" ) )
   writeLines( "------------------------" )
   writeLines( "Package: MDplot" )
-  writeLines( "Author: christian.margreitter@boku.ac.at\n\n" )
+  writeLines( "Author: christian.margreitter@gmail\n\n" )
 }

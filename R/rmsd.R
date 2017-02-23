@@ -1,60 +1,75 @@
 # plot the average RMSD of many runs with spread
-rmsd_average <- function( rmsdAvInput,
-                          skip = 0,
-                          printMeans = FALSE,
+rmsd_average <- function( rmsdInput,
+                          levelFactor = NA,
+                          snapshotsPerTimeInt = 1000,
+                          timeUnit = "ns",
+                          rmsdUnit = "nm",
+                          maxYAxis = NA,
+                          barePlot = FALSE,
                           ... )
 {
+  # initialize
+  MAT_values <- matrix( c( 1:length( rmsdInput[[ 1 ]][[ 1 ]] ),
+                           rep( NA, times = 3 * length( rmsdInput[[ 1 ]][[ 1 ]] ) ) ),
+                        byrow = FALSE, ncol = 4 )
+  MAT_input <- matrix( rmsdInput[[ 1 ]][[ 2 ]], ncol = 1 )
+  for( i in 2:length( rmsdInput ) )
+    MAT_input <- cbind( MAT_input,
+                        rmsdInput[[ i ]][[ 2 ]] )
+  colnames( MAT_values ) <- c( "snapshot", "minimum", "mean", "maximum" )
+  REAL_max_RMSD = max( MAT_input )
+  if( !is.na( maxYAxis ) )
+    REAL_max_RMSD = maxYAxis
   
-  # initialization
-  names <- rep( NA, length( rmsdAvInput ) )
-  MAT_result <- NULL
-  #########
-  
-  # calculate the average RMSD and the standard deviation
-  for( i in 1:length( rmsdAvInput ) )
+  # calculate the average RMSD, minimum and maximum values
+  for( i in 1:length( rmsdInput[[ 1 ]][[ 1 ]] ) )
   {
-    names[ i ] <- rmsdAvInput[[ i ]][[ "name" ]]
-    VEC_files <- rmsdAvInput[[ i ]][[ "files" ]]
-    VEC_values <- c()
-    for( j in 1:length( VEC_files ) )
-    {
-      VEC_buffer <- read.table( VEC_files[ j ] )[ , 2 ]
-      if( skip > 0 )
-        VEC_buffer <- VEC_buffer[ skip:length( VEC_buffer ) ]
-      VEC_values <- c( VEC_values, VEC_buffer )
-    }
-    MAT_result <- rbind( MAT_result, c( mean( VEC_values ), sd( VEC_values ) ) )
+    MAT_values[ i, 2 ] <- min( MAT_input[ i, ] )
+    MAT_values[ i, 3 ] <- mean( MAT_input[ i, ] )
+    MAT_values[ i, 4 ] <- max( MAT_input[ i, ] )
   }
+  if( !is.na( levelFactor ) )
+    MAT_values <- MAT_values[ c( T, rep( F, times = levelFactor - 1 ) ), ]
   #########
   
-  # set the column and row names
-  colnames( MAT_result ) <- c( "values", "sds" )
-  rownames( MAT_result ) <- names
-  #########
+  # plot the minimum curve
+  plot( MAT_values[ , 1 ], MAT_values[ , 2 ], type = "l",
+        col = "grey", xaxs = "i", yaxs = "i",
+        xaxt = "n",
+        xlim = c( min( MAT_values[ , 1 ] ), max( MAT_values[ , 1 ] ) ),
+        #yaxt = ifelse( barePlot, "n", "s" ),
+        xlab = "", ylab = "",
+        ylim = c( 0, REAL_max_RMSD * 1.05 ), ... )
+  if( !barePlot )
+  {
+    VEC_tickValues <- axTicks( 1 )
+    axis( 1,
+          at = VEC_tickValues,
+          labels = VEC_tickValues / snapshotsPerTimeInt )
+    mtext( side = 1, text = paste( "time [", timeUnit, "]", sep = "" ), line = 3,
+           cex = 1 )
+    mtext( side = 2, text = paste( "RMSD [", rmsdUnit, "]", sep = "" ), line = 2.75,
+           cex = 1 )
+  }
+  par( new = TRUE )
   
-  # plot the bars and the errors
-  par( mar = c( 2.5, 4.25, 1.0, 1.5 ) )
-  PLOT_positions = barplot( MAT_result[ , 1 ],
-                            ylim = c( 0.0, 1.5 * max( MAT_result[ , 1 ] ) ),
-                            ylab = "RMSD [nm]",
-                            xaxt = "n",
-                            ... )
-  plot_segments( cbind( PLOT_positions, MAT_result[ , 1 ] ),
-                 VEC_spread = MAT_result[ , 2 ] )
-  axis( 1,
-        at = PLOT_positions,
-        labels = rownames( MAT_result ),
-        cex.axis = 0.9,
-        tick = FALSE )
-  #########
-  
-  # print the means in case specified
-  print( paste( "Mean: ",
-                round( mean( MAT_result[ , 1 ] ), digits = 2 ),
-                " +/- ",
-                round( mean( MAT_result[ , 2 ] ), digits = 2 ),
-                sep = "" ) )
-  #########
+  # plot the maximum curve
+  plot( MAT_values[ , 1 ], MAT_values[ , 4 ], type = "l",
+        col = "grey", xaxs = "i", yaxs = "i",
+        xaxt = "n", yaxt = "n", xlim = c( min( MAT_values[ , 1 ] ),
+                                          max( MAT_values[ , 1 ] ) ),
+        xlab = "", ylab = "",
+        ylim = c( 0, REAL_max_RMSD * 1.05 ) )
+   par( new = TRUE )
+
+  # plot the mean curve
+  plot( MAT_values[ , 1 ], MAT_values[ , 3 ], type = "l",
+        col = "black", xaxs = "i", yaxs = "i",
+        xaxt = "n", yaxt = "n", xlim = c( min( MAT_values[ , 1 ] ),
+                                          max( MAT_values[ , 1 ] ) ),
+        xlab = "", ylab = "", cex = 1.45,
+        ylim = c( 0, REAL_max_RMSD * 1.05 ) ) 
+  return( MAT_values )
 }
 
 # load RMSD
@@ -63,15 +78,22 @@ load_rmsd <- function( files,
 {
   mdEngine <- toupper( mdEngine )
   if( mdEngine != "GROMOS" &&
-      mdEngine != "GROMACS" )
+      mdEngine != "GROMACS" &&
+      mdEngine != "AMBER" )
     stop( paste( "The specified 'mdEngine', set to ", mdEngine, " is unknown.", sep = "" ) )
   LIST_return <- list()
   for( i in 1:length( files ) )
   {
-    TABLE_input <- NA
     if( mdEngine == "GROMOS" )
     {
       TABLE_input <- read.table( files[ i ] )
+      if( length( LIST_return ) == 0 )
+        LIST_return <- list( TABLE_input[ , 1 ], TABLE_input[ , 2 ] )
+      else
+      {
+        LIST_return[[ length( LIST_return ) + 1 ]] <- TABLE_input[ , 1 ]
+        LIST_return[[ length( LIST_return ) + 1 ]] <- TABLE_input[ , 2 ]
+      }
     }
     if( mdEngine == "GROMACS" )
     {
@@ -82,14 +104,45 @@ load_rmsd <- function( files,
       inputData <- gsub( "^\\s+|\\s+$", "", inputData )
       inputData <- inputData[ inputData != "" ]
       VEC_input <- as.numeric( unlist( strsplit( inputData, "\\s+" ) ) )
-      TABLE_input <- as.table( matrix( VEC_input, byrow = TRUE, ncol = 2 ) )
+      TABLE_input <- matrix( VEC_input, byrow = TRUE, ncol = 2 )
+      if( length( LIST_return ) == 0 )
+        LIST_return <- list( TABLE_input[ , 1 ], TABLE_input[ , 2 ] )
+      else
+      {
+        LIST_return[[ length( LIST_return ) + 1 ]] <- TABLE_input[ , 1 ]
+        LIST_return[[ length( LIST_return ) + 1 ]] <- TABLE_input[ , 2 ]
+      }
     }
-    if( length( LIST_return ) == 0 )
-      LIST_return <- list( TABLE_input[ , 1 ], TABLE_input[ , 2 ] )
-    else
+    if( mdEngine == "AMBER" )
     {
-      LIST_return[[ length( LIST_return ) + 1 ]] <- TABLE_input[ , 1 ]
-      LIST_return[[ length( LIST_return ) + 1 ]] <- TABLE_input[ , 2 ]
+      inputData <- readLines( files[ i ],
+                              warn = FALSE )
+      LIST_inputData <- list()
+      INT_previous <- 1
+      for( j in 1:length( inputData ) )
+        if( inputData[ j ] == "@type xy" )
+        {
+          LIST_inputData[[ length( LIST_inputData ) + 1 ]] <- inputData[ INT_previous:j ]
+          INT_previous <- j
+        }
+      LIST_inputData[[ length( LIST_inputData ) + 1 ]] <- inputData[ ( INT_previous + 1 ):length( inputData ) ]
+      for( j in 2:length( LIST_inputData ) )
+      {
+        inputData <- LIST_inputData[[ j ]]
+        inputData <- gsub( "^[#].*", "", inputData )
+        inputData <- gsub( "^[@].*", "", inputData )
+        inputData <- gsub( "^\\s+|\\s+$", "", inputData )
+        inputData <- inputData[ inputData != "" ]
+        VEC_input <- as.numeric( unlist( strsplit( inputData, "\\s+" ) ) )
+        TABLE_input <- matrix( VEC_input, byrow = TRUE, ncol = 2 )
+        if( length( LIST_return ) == 0 )
+          LIST_return <- list( TABLE_input[ , 1 ], TABLE_input[ , 2 ] )
+        else
+        {
+          LIST_return[[ length( LIST_return ) + 1 ]] <- TABLE_input[ , 1 ]
+          LIST_return[[ length( LIST_return ) + 1 ]] <- TABLE_input[ , 2 ]
+        }
+      }
     }
   }
   return( LIST_return )
@@ -112,6 +165,8 @@ rmsd <- function( rmsdData,
                                        FUN = function( x ) max( x ) ) ) )
   INT_max_snapshot = max( unlist( lapply( rmsdData[ c( T, F ) ],
                                            FUN = function( x ) max( x ) ) ) )
+  INT_min_snapshot = min( unlist( lapply( rmsdData[ c( T, F ) ],
+                                          FUN = function( x ) min( x ) ) ) )
   #########
   
   # set colours and names
@@ -122,8 +177,8 @@ rmsd <- function( rmsdData,
     names = 1:( length( rmsdData ) / 2 )
   #########
   
-  LIST_return <- list()
   # plot
+  LIST_return <- list()
   for( i in 1:length( rmsdData ) )
   {
     if( i %% 2 == 1 )
@@ -152,10 +207,15 @@ rmsd <- function( rmsdData,
   # plot the rest
   if( !barePlot )
   {
+    VEC_timeTicks <- axTicks( 1,
+                              usr = c( INT_min_snapshot,
+                                       INT_max_snapshot ) )
+    VEC_timeLabels <- VEC_timeTicks
+    if( !is.na( timeUnit ) )
+      VEC_timeLabels <- VEC_timeTicks / snapshotsPerTimeInt
     axis( 1,
-          at = split_equidistant( c( 1, length( rmsdData[[ 1 ]] ) ), 7 ),
-          labels = split_equidistant( c( 1, ( length( rmsdData[[ 1 ]] ) / snapshotsPerTimeInt ) ), 7 ),
-          cex.axis = 1 )
+          at = VEC_timeTicks,
+          labels = VEC_timeLabels )
     mtext( side = 1, text = paste( "time [", timeUnit, "]", sep = "" ), line = 3,
            cex = 1 )
     mtext( side = 2, text = paste( "RMSD [", rmsdUnit, "]", sep = "" ), line = 2.75,

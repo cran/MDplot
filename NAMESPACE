@@ -5,14 +5,14 @@ import( gtools )
 import( gplots )
 importFrom( "graphics", "abline", "axis", "barplot", "contour", "image", "layout",
             "legend", "lines", "mtext", "par", "persp", "plot", "plot.new",
-            "rasterImage", "segments", "text" )
+            "rasterImage", "segments", "text", "axTicks" )
 importFrom( "stats", "sd" )
 importFrom( "utils", "read.table", "write.table" )
 importFrom( "grDevices", "as.raster", "colorRampPalette", "trans3d" )
 
 # export plotting functions
 export( 
-         dssp_summary,
+         dssp,
          dssp_ts,
          rmsd,
          rmsf,
@@ -23,9 +23,9 @@ export(
          xrmsd,
          hbond_ts,
          clusters_ts,
-         timeseries
-         #dssp_summary_multi,
-         #rmsd_average
+         timeseries,
+         rmsd_average,
+         noe
        )
 
 # export loading functions
@@ -34,20 +34,16 @@ export(
          load_ramachandran,
          load_clusters,
          load_TIcurve,
-         load_dssp_summary,
+         load_dssp,
          load_dssp_ts,
          load_rmsf,
          load_rmsd,
          load_xrmsd,
          load_hbond_ts,
          load_clusters_ts,
-         load_timeseries
+         load_timeseries,
+         load_noe
       )
-
-# export data manipulation functions
-#export(
-#         averaging_dssp_summary
-#      )
 
 # export other functions
 export(
@@ -65,7 +61,12 @@ export(
          get_sign_digits,
          fill_bins,
          print_help,
-         setNumberDigits
+         setNumberDigits,
+         load_XPM,
+         find_Nth_occurrence,
+         split_GROMACS_atomnames,
+         load_clusters_GROMACS,
+         split_AMBER_atomnames
       )
 
 # export classes

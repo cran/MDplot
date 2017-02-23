@@ -19,23 +19,23 @@ dssp_summary_multi <- function( dsspSumMultInput,
     colours <- PALETTE_colours( length( dsspSumMultInput ) )
   }
   #########
-  MDplot::dssp_summary( dsspSumMultInput[[ 1 ]][[ "matrix" ]],
-                        selectedElements = c( selectedElements ),
-                        barePlot = barePlot,
-                        plotType = "curves",
-                        colours = c( colours[ 1 ] ),
-                        showResidues = showResidues,
-                        ... )
+  dssp( dsspSumMultInput[[ 1 ]][[ "matrix" ]],
+        selectedElements = c( selectedElements ),
+        barePlot = barePlot,
+        plotType = "curves",
+        colours = c( colours[ 1 ] ),
+        showResidues = showResidues,
+        ... )
   for( i in 2:length( dsspSumMultInput ) )
   {
     par( new = TRUE )
-    MDplot::dssp_summary( dsspSumMultInput[[ i ]][[ "matrix" ]],
-                          selectedElements = c( selectedElements ),
-                          barePlot = TRUE,
-                          plotType = "curves",
-                          colours = c( colours[ i ] ),
-                          showResidues = showResidues,
-                          ... )
+    dssp( dsspSumMultInput[[ i ]][[ "matrix" ]],
+          selectedElements = c( selectedElements ),
+          barePlot = TRUE,
+          plotType = "curves",
+          colours = c( colours[ i ] ),
+          showResidues = showResidues,
+          ... )
   }
   
   # print legend, if flag is set
@@ -56,10 +56,10 @@ averaging_dssp_summary <- function( VEC_files )
 {
   if( length( VEC_files ) < 2 )
     stop( "Error because no input files (two at least) have been specified!" )
-  MAT_average <- MDplot::load_dssp_summary( VEC_files[ 1 ] )
+  MAT_average <- load_dssp( VEC_files[ 1 ] )
   for( i in 2:length( VEC_files ) )
     MAT_average <- MAT_average +
-                   MDplot::load_dssp_summary( VEC_files[ i ] )
+                   load_dssp( VEC_files[ i ] )
   MAT_average <- MAT_average / length( VEC_files )
   colnames( MAT_average ) <- c( "residuenumber", "# 3-Helix", "3-Helix",
                                 "# 4-Helix", "4-Helix", "# 5-Helix",
@@ -69,35 +69,122 @@ averaging_dssp_summary <- function( VEC_files )
   return( MAT_average )
 }
 
-# load and return input
-load_dssp_summary <- function( path,
-                               mdEngine = "GROMOS" )
+# load and return GROMACS input
+load_dssp_GROMACS <- function( path )
 {
-  return( read.table( path ) )
+  inputData <- readLines( path,
+                          warn = FALSE )[ -1 ]
+  MAT_dataBuffer <- NA
+  for( i in 1:length( inputData ) )
+    if( all( is.na( MAT_dataBuffer ) ) )
+    {
+      MAT_dataBuffer <- matrix( unlist( strsplit( inputData[ i ],
+                                                  split = "" ) ),
+                                nrow = 1 )
+    }
+  else
+  {
+    MAT_dataBuffer <- rbind( MAT_dataBuffer,
+                             unlist( strsplit( inputData[ i ],
+                                               split = "" ) ) )
+  }
+  return( MAT_dataBuffer )
+}
+
+# load and return input
+load_dssp <- function( path,
+                       mdEngine = "GROMOS" )
+{
+  mdEngine <- toupper( mdEngine )
+  if( mdEngine != "GROMOS" &&
+      mdEngine != "GROMACS" &&
+      mdEngine != "AMBER" )
+    stop( paste( "The specified 'mdEngine', set to ", mdEngine, " is unknown.", sep = "" ) )
+  if( mdEngine == "GROMOS" )
+  {
+    dsspData <- read.table( path )
+    MAT_data <- as.matrix( dsspData[ , -1][ , c( F, T ) ] )
+    MAT_data <- cbind( dsspData[ , 1 ],
+                       MAT_data )
+    colnames( MAT_data ) <- c( "residue", "3-Helix", "4-Helix",
+                               "5-Helix", "Turn", "B-Strand",
+                               "B-Bridge", "Bend" )
+    return( MAT_data )
+  }
+  if( mdEngine == "GROMACS" )
+  {
+    
+    MAT_dataBuffer <- load_dssp_GROMACS( path )
+    MAT_data <- matrix( c( 1:ncol( MAT_dataBuffer ),
+                           rep( 0,
+                               times = ncol( MAT_dataBuffer ) * 8 ) ),
+                        ncol = 9, byrow = FALSE )
+    VEC_abbrev <- c( "I", "G", "~",
+                     "S", "T", "H",
+                     "B", "E" )
+    colnames( MAT_data ) <- c( "residue", "5-Helix", "3-Helix",
+                               "Coil", "Bend", "Turn",
+                               "4-Helix", "B-Bridge", "B-Strand" )
+    for( i in 1:length( VEC_abbrev ) )
+      for( j in 1:ncol( MAT_dataBuffer ) )
+      {
+        INT_occ <- sum( sapply( gregexpr( VEC_abbrev[ i ],
+                                          MAT_dataBuffer[ , j ],
+                                          fixed = TRUE ),
+                                function( x ) sum( x > -1 ) ) )
+        MAT_data[ j, i + 1 ] <- INT_occ
+      }
+    MAT_data <- round( MAT_data / nrow( MAT_dataBuffer ) * 100,
+                       digits = 2 )
+    MAT_data[ , 1 ] <- 1:ncol( MAT_dataBuffer )
+    return( MAT_data )
+  }
+  if( mdEngine == "AMBER" )
+  {
+    dsspData <- read.table( path )[ , -1 ]
+    MAT_data <- matrix( c( 1:ncol( dsspData ),
+                           rep( 0,
+                                times = ncol( dsspData ) * 7 ) ),
+                        ncol = 8, byrow = FALSE )
+    VEC_abbrev <- c( "G", "H", "I",
+                     "T", "E", "B",
+                     "S" )
+    colnames( MAT_data ) <- c( "residue", "3-Helix", "4-Helix",
+                               "5-Helix", "Turn", "B-Strand",
+                               "B-Bridge", "Bend" )
+    for( i in 1:length( VEC_abbrev ) )
+      for( j in 1:ncol( dsspData ) )
+      {
+        INT_occ <- sum( sapply( gregexpr( VEC_abbrev[ i ],
+                                          dsspData[ , j ],
+                                          fixed = TRUE ),
+                                function( x ) sum( x > -1 ) ) )
+        MAT_data[ j, i + 1 ] <- INT_occ
+      }
+    MAT_data <- round( MAT_data / nrow( dsspData ) * 100,
+                       digits = 2 )
+    MAT_data[ , 1 ] <- 1:ncol( dsspData )
+    return( MAT_data )
+  }
 }
 
 # plot the summary over residues and values (selected)
-# WARNING because residues are renumbered if selected
-dssp_summary <- function( dsspData,
-                          printLegend = FALSE,
-                          useOwnLegend = FALSE,
-                          elementNames = NA,
-                          colours = NA,
-                          showValues = NA,
-                          showResidues = NA,
-                          plotType = "dots",
-                          selectedElements = NA,
-                          barePlot = FALSE,
-                          ... )
+dssp <- function( dsspData,
+                  printLegend = FALSE,
+                  useOwnLegend = FALSE,
+                  elementNames = NA,
+                  colours = NA,
+                  showValues = NA,
+                  showResidues = NA,
+                  plotType = "dots",
+                  selectedElements = NA,
+                  barePlot = FALSE,
+                  ... )
 {
   
   # parse input table and get all values in a matrix
   VEC_residues <- dsspData[ , 1 ]
-  dsspData <- dsspData[ , -1 ]
-  MAT_data <- as.matrix( dsspData[ , c( F, T ) ] )
-  colnames( MAT_data ) <- c( "3-Helix", "4-Helix", "5-Helix",
-                             "Turn", "B-Strand", "B-Bridge",
-                             "Bend" )
+  MAT_data <- dsspData[ , -1 ]
   #########
   
   # check plot type, delete non-selected motifs and check legend names
@@ -129,12 +216,16 @@ dssp_summary <- function( dsspData,
   # if certain range of residues is to be shown, remove the rest
   MAT_buffer <- MAT_data
   INT_resStart <- 1 # plot all residues
+  VEC_residueLabels <- VEC_residues
   if( !all( is.na( showResidues ) ) )
   {
     for( i in nrow( MAT_buffer ):1 )
       if( !( i %in% showResidues[ 1 ]:showResidues[ 2 ] ) )
+      {
         MAT_buffer <- MAT_buffer[ -i, , drop = FALSE ] #use "drop = FALSE" to avoid dimension reduction
-    INT_resStart<- showResidues[ 1 ]
+        VEC_residueLabels <- VEC_residueLabels[ -i ]
+      }
+    INT_resStart <- showResidues[ 1 ]
   }
   MAT_data <- MAT_buffer
   #########
@@ -188,7 +279,7 @@ dssp_summary <- function( dsspData,
                       y = MAT_data[ 1, ],
                       xlim = c( 1, nrow( MAT_data ) ),
                       xaxs = "i",
-                      xaxt = ifelse( barePlot, "n", "s" ),
+                      xaxt = "n",
                       ylim = c( 0, 100 ),
                       yaxs = "i",
                       yaxt = ifelse( barePlot, "n", "s" ),
@@ -197,6 +288,13 @@ dssp_summary <- function( dsspData,
                       col = colours,
                       bty = ifelse( barePlot, "n", "o" ) ),
                 ellipsis ) )
+   if( !barePlot )
+   {
+     VEC_tickValues <- axTicks( 1 )
+     axis( 1,
+           at = VEC_tickValues,
+           labels = VEC_residueLabels[ VEC_tickValues ] )
+   }
     if( nrow( MAT_data ) > 1 )
       for( i in 2:nrow( MAT_data ) )
     {
@@ -218,7 +316,7 @@ dssp_summary <- function( dsspData,
     PLOT_bar <- do.call( what = barplot,
                          c( list( height = t( MAT_data ),
                                   xaxs = "i",
-                                  xaxt = ifelse( barePlot, "n", "s" ),
+                                  xaxt = "n",
                                   ylim = c( 0, 100 ),
                                   yaxs = "i",
                                   yaxt = ifelse( barePlot, "n", "s" ),
@@ -231,7 +329,7 @@ dssp_summary <- function( dsspData,
       VEC_atLabels <- seq( 5, by = 5, length.out = length( VEC_atTicks ) )
       axis( side = 1,
             at = VEC_atTicks,
-            labels = VEC_atLabels )
+            labels = VEC_residueLabels[ VEC_atLabels ] )
     }
   }
   #########
@@ -243,7 +341,7 @@ dssp_summary <- function( dsspData,
              c( list( x = MAT_data[ , 1 ],
                       xlim = c( 1, nrow( MAT_data ) ),
                       xaxs = "i",
-                      xaxt = ifelse( barePlot, "n", "s" ),
+                      xaxt = "n",
                       ylim = c( 0, 100 ),
                       yaxs = "i",
                       yaxt = ifelse( barePlot, "n", "s" ),
@@ -252,6 +350,13 @@ dssp_summary <- function( dsspData,
                       lwd = 2.0,
                       bty = ifelse( barePlot, "n", "o" ) ),
                 ellipsis ) )
+    if( !barePlot )
+    {
+      VEC_tickValues <- axTicks( 1 )
+      axis( 1,
+            at = VEC_tickValues,
+            labels = VEC_residueLabels[ VEC_tickValues ] )
+    }
     if( ncol( MAT_data ) > 1 )
       for( i in 2:ncol( MAT_data ) )
       {
@@ -284,34 +389,104 @@ dssp_summary <- function( dsspData,
 # load the time-series files
 load_dssp_ts <- function( folder,
                           filenames = NA,
+                          stride = 1,
                           mdEngine = "GROMOS" )
 {
-  VEC_gromos_names <- filenames
-  if( is.na( filenames ) )
-    VEC_gromos_names <- c( "3-Helix", "4-Helix", "5-Helix",
-                           "Bend", "Beta-Bridge", "Beta-Strand",
-                           "Turn" )
-  STRING_gromos_postfix <- ".out"
+  mdEngine <- toupper( mdEngine )
+  if( mdEngine != "GROMOS" &&
+      mdEngine != "GROMACS" &&
+      mdEngine != "AMBER" )
+    stop( paste( "The specified 'mdEngine', set to ", mdEngine, " is unknown.", sep = "" ) )
   LIST_return <- list()
-  for( i in 1:length( VEC_gromos_names ) )
+  if( mdEngine == "GROMOS" )
   {
-    STRING_file <- paste( folder,
-                          "/",
-                          VEC_gromos_names[ i ],
-                          STRING_gromos_postfix, sep = "" )
-    if( !file.exists( STRING_file ) )
-      next
-    if( file.info( STRING_file )$size == 0 )
-      next
-    TABLE_current <- read.table( STRING_file )
-    LIST_current <- list( name = VEC_gromos_names[ i ],
-                          values = TABLE_current )
-    LIST_return[[ length( LIST_return ) + 1 ]] <- LIST_current
+    VEC_gromos_names <- filenames
+    if( all( is.na( filenames ) ) )
+      VEC_gromos_names <- c( "3-Helix", "4-Helix", "5-Helix",
+                             "Bend", "Beta-Bridge", "Beta-Strand",
+                             "Turn" )
+    STRING_gromos_postfix <- ".out"
+    for( i in 1:length( VEC_gromos_names ) )
+    {
+      STRING_file <- paste( folder,
+                            "/",
+                            VEC_gromos_names[ i ],
+                            STRING_gromos_postfix, sep = "" )
+      if( !file.exists( STRING_file ) )
+        next
+      if( file.info( STRING_file )$size == 0 )
+        next
+      TABLE_current <- read.table( STRING_file )
+      if( stride != 1 )
+        TABLE_current <- TABLE_current[ c( T, rep( F, times = stride - 1 ) ), ]
+      LIST_current <- list( name = VEC_gromos_names[ i ],
+                            values = TABLE_current )
+      LIST_return[[ length( LIST_return ) + 1 ]] <- LIST_current
+    }
+  }
+  if( mdEngine == "GROMACS" )
+  {
+    MAT_dataBuffer <- load_dssp_GROMACS( paste( folder, "/", filenames, sep = "" ) )
+    VEC_abbrev <- c( "I", "G", "~",
+                     "S", "T", "H",
+                     "B", "E" )
+    VEC_types <- c( "5-Helix", "3-Helix", "Coil",
+                    "Bend", "Turn", "4-Helix",
+                    "B-Bridge", "B-Strand" )
+    for( i in 1:length( VEC_abbrev ) )
+    {
+      VEC_tableColumnResidues <- NA
+      VEC_tableColumnSnapshot <- NA
+      for( j in 1:ncol( MAT_dataBuffer ) )
+        for( k in 1:nrow( MAT_dataBuffer ) )
+        {
+          if( MAT_dataBuffer[ k, j ] == VEC_abbrev[ i ] )
+          {
+            VEC_tableColumnSnapshot <- c( VEC_tableColumnSnapshot,
+                                          k )
+            VEC_tableColumnResidues <- c( VEC_tableColumnResidues,
+                                          j )
+          }
+        }
+      if( !all( is.na( VEC_tableColumnResidues ) ) )
+        LIST_return[[ length( LIST_return ) + 1 ]] <- list( name = VEC_types[ i ],
+                                                            values = list( x=VEC_tableColumnSnapshot[ -1 ],
+                                                                           y=VEC_tableColumnResidues[ -1 ] ) )
+    }
+  }
+  if( mdEngine == "AMBER" )
+  {
+    dsspData <- read.table( paste( folder, "/", filenames, sep = "" ) )[ , -1 ]
+    VEC_abbrev <- c( "G", "H", "I",
+                     "T", "E", "B",
+                     "S" )
+    VEC_types <- c( "3-Helix", "4-Helix", "5-Helix",
+                    "Turn", "B-Strand", "B-Bridge",
+                    "Bend" )
+    for( i in 1:length( VEC_abbrev ) )
+    {
+      VEC_tableColumnResidues <- NA
+      VEC_tableColumnSnapshot <- NA
+      for( j in 1:ncol( dsspData ) )
+        for( k in 1:nrow( dsspData ) )
+        {
+          if( dsspData[ k, j ] == VEC_abbrev[ i ] )
+          {
+            VEC_tableColumnSnapshot <- c( VEC_tableColumnSnapshot,
+                                          k )
+            VEC_tableColumnResidues <- c( VEC_tableColumnResidues,
+                                          j )
+          }
+        }
+      if( !all( is.na( VEC_tableColumnResidues ) ) )
+        LIST_return[[ length( LIST_return ) + 1 ]] <- list( name = VEC_types[ i ],
+                                                            values = list( x=VEC_tableColumnSnapshot[ -1 ],
+                                                                           y=VEC_tableColumnResidues[ -1 ] ) )
+    }
   }
   return( LIST_return )
 }
 
-# BUG: time in nanoseconds does not work!
 # plot the time-series files, that are specified
 dssp_ts <- function( tsData,
                      printLegend = TRUE,
@@ -319,6 +494,7 @@ dssp_ts <- function( tsData,
                      residueBoundaries = NA,
                      timeUnit = NA,
                      snapshotsPerTimeInt = 1000,
+                     barScaleFactor = 0.25,
                      barePlot = FALSE,
                      ... )
 {
@@ -372,7 +548,7 @@ dssp_ts <- function( tsData,
             ylab = ifelse( barePlot,
                            "",
                            "residue number" ),
-            pch = 22, col = colours[ i ], bg = colours[ i ], cex = 0.25,
+            pch = 22, col = colours[ i ], bg = colours[ i ], cex = barScaleFactor,
             ... )
     }
     else
@@ -384,7 +560,7 @@ dssp_ts <- function( tsData,
             xaxs = "i", yaxs = "i",
             xaxt = "n", yaxt = "n",
             xlab = "", ylab = "",
-            pch = 22, col = colours[ i ], bg = colours[ i ], cex = 0.25 )
+            pch = 22, col = colours[ i ], bg = colours[ i ], cex = barScaleFactor )
     }
   }
   
