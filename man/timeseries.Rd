@@ -17,7 +17,7 @@ timeseries( tsData,
             barePlot = FALSE,
             ... )}
 \arguments{
-  \item{tsData}{List of (alterating) indices and response values, as also produced by \code{\link{load_timeseries}()} for example.}
+  \item{tsData}{List of (alternating) indices and response values, as also produced by \code{\link{load_timeseries}()} for example.}
   \item{printLegend}{Boolean, which triggers plotting of the legend.}
   \item{snapshotsPerTimeInt}{Number, specifying how many snapshots are within one \code{timeUnit}.}
   \item{timeUnit}{Specifies, which unit the x-axis is given in.}
@@ -37,11 +37,18 @@ Returns a list of list, the latter each holding for every data input series:
 \item{\code{sd}} The standard deviation over the whole set.
 }}
 \examples{
+# GROMOS
 timeseries( load_timeseries( c( system.file( "extdata/timeseries_example_1.txt.gz",
                                              package = "MDplot" ),
                                 system.file( "extdata/timeseries_example_2.txt.gz",
                                              package = "MDplot" ) ) ),
             snapshotsPerTimeInt = 100 )
+
+# GROMACS
+timeseries( load_timeseries( c( system.file( "extdata/timeseries_example_GROMACS.txt.gz",
+                                             package = "MDplot" ) ),
+                             mdEngine = "GROMACS" ),
+            ylim = c( 0.545, 0.7 ), valueName = "Area per lipid", valueUnit = "nm^2" )
 }
 \author{Christian Margreitter}
 \keyword{timeseries}

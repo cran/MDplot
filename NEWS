@@ -1,3 +1,12 @@
+Version: 1.0.1
+Date: 2017-07-04
+
+o fixed some typos in the manual pages
+o added vignette (publication)
+o added special input support for function "load_timeseries()" to be able
+  to load multi-column timeseries data
+------------------------
+
 Version: 1.0.0
 Date: 2017-02-24
 
